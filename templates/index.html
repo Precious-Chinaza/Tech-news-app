@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tech News - Latest Technology Headlines</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📱</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1> Tech Pulse📺📺</h1>
+            <p>Stay updated with the latest technology headlines and innovations</p>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert {{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if articles %}
+            <main class="news-grid">
+                {% for article in articles %}
+                    <article class="news-card">
+                        {% if article.urlToImage %}
+                            <img src="{{ article.urlToImage }}" alt="{{ article.title }}" class="news-image" loading="lazy">
+                        {% endif %}
+                        
+                        <div class="news-content">
+                            <h2 class="news-title">{{ article.title }}</h2>
+                            
+                            <div class="news-meta">
+                                {% if article.source and article.source.name %}
+                                    <span class="news-source">{{ article.source.name }}</span>
+                                {% endif %}
+                                {% if article.formatted_date %}
+                                    <span class="news-date">{{ article.formatted_date }}</span>
+                                {% endif %}
+                            </div>
+                            
+                            {% if article.description %}
+                                <p class="news-description">{{ article.description }}</p>
+                            {% endif %}
+                            
+                            <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer" class="read-more">
+                                Read Full Article
+                            </a>
+                        </div>
+                    </article>
+                {% endfor %}
+            </main>
+        {% else %}
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p>Loading latest tech news...</p>
+            </div>
+        {% endif %}
+
+        <footer class="footer">
+            <p>Powered by <a href="https://newsapi.org" target="_blank" rel="noopener noreferrer">NewsAPI</a> | 
+               
+        </footer>
+    </div>
+</body>
+</html>
