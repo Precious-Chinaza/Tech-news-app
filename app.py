@@ -5,12 +5,15 @@ import sqlite3
 import hashlib
 from datetime import datetime
 from functools import wraps
+from dotenv import load_dotenv  
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here-change-in-production'  # Change this in production
 
 # Get API key from environment variable or use default (for demo)
-API_KEY = os.getenv('NEWS_API_KEY', '517b016e60784bffa8fd92822c438fe7')
+
+API_KEY = os.getenv('NEWS_API_KEY')
 
 # Tech news categories with their search keywords
 TECH_CATEGORIES = {
