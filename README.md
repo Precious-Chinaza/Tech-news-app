@@ -1,6 +1,6 @@
-# 🚀 Tech News Hub
+# Tech Pulse📺📺
 
-A modern, responsive Flask web application that fetches and displays the latest technology news headlines using the NewsAPI.
+This is a responsive Flask web application that fetches and displays the latest tech. news headlines using the NewsAPI.
 
 ## Features
 
@@ -85,14 +85,7 @@ Tech-news/
 
 - `NEWS_API_KEY`: Your NewsAPI key (optional, demo key included)
 
-### Customization
 
-You can customize the app by modifying:
-
-- **News Categories**: Change `category=technology` in `app.py` to other categories like `business`, `sports`, `health`
-- **Country**: Modify `country=us` to get news from different countries
-- **Styling**: Update `static/css/style.css` to change the appearance
-- **Layout**: Modify `templates/index.html` to change the structure
 
 ## API Information
 
@@ -157,4 +150,4 @@ If you encounter any issues:
 
 ---
 
-**Built with ❤️ using Flask and NewsAPI**
+**Built using Flask and NewsAPI**
