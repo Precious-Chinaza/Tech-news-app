@@ -58,31 +58,34 @@
                 <main class="news-grid">
                     {% for article in articles %}
                         <article class="news-card">
-                            {% if article.urlToImage %}
-                                <img src="{{ article.urlToImage }}" alt="{{ article.title }}" class="news-image" loading="lazy">
-                            {% endif %}
-                            
-                            <div class="news-content">
-                                <h3 class="news-title">{{ article.title }}</h3>
-                                
-                                <div class="news-meta">
-                                    {% if article.source and article.source.name %}
-                                        <span class="news-source">{{ article.source.name }}</span>
-                                    {% endif %}
-                                    {% if article.formatted_date %}
-                                        <span class="news-date">{{ article.formatted_date }}</span>
-                                    {% endif %}
-                                </div>
-                                
-                                {% if article.description %}
-                                    <p class="news-description">{{ article.description }}</p>
-                                {% endif %}
-                                
-                                <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer" class="read-more">
-                                    Read Full Article
-                                </a>
-                            </div>
-                        </article>
+    {% if article.urlToImage %}
+        <img src="{{ article.urlToImage }}" alt="{{ article.title }}" class="news-image" loading="lazy">
+    {% endif %}
+    
+    <div class="news-content">
+        <h3 class="news-title">{{ article.title }}</h3>
+        
+        <div class="news-meta">
+            {% if article.source and article.source.name %}
+                <span class="news-source">{{ article.source.name }}</span>
+            {% endif %}
+        </div>
+        
+        {% if article.description %}
+            <p id="article-text-{{ loop.index }}" class="news-description">{{ article.description }}</p>
+        {% endif %}
+        
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <a href="{{ article.url }}" target="_blank" class="read-more" style="flex: 1; text-align: center;">Source</a>
+            
+            <button class="mentor-btn" 
+                    onclick="toggleMentor(); analyzeArticle('{{ loop.index }}')" 
+                    style="flex: 1;">
+                Mentor Analysis
+            </button>
+        </div>
+    </div>
+</article>
                     {% endfor %}
                 </main>
             {% else %}
@@ -91,6 +94,16 @@
                     <p>Loading latest tech news...</p>
                 </div>
             {% endif %}
+
+            <div id="mentor-panel" class="mentor-panel">
+    <div class="drag-handle"></div>
+    <div class="mentor-header">
+        <span class="mentor-badge">Startup Mentor</span>
+        <button onclick="toggleMentor()" style="border:none; background:none; cursor:pointer; font-size:1.5rem;">✕</button>
+    </div>
+    <div id="mentor-display">
+        </div>
+   </div>
 
             <footer class="footer">
                 <p>Powered by <a href="https://newsapi.org" target="_blank" rel="noopener noreferrer">NewsAPI</a> | 

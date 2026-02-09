@@ -1,21 +1,24 @@
-from flask import Flask, render_template, flash, request, redirect, url_for, session
+from flask import Flask, render_template, flash, request, redirect, url_for, session, jsonify
 import requests
 import os
 import sqlite3
 import hashlib
 from datetime import datetime
 from functools import wraps
-from dotenv import load_dotenv  
+from dotenv import load_dotenv 
+from services.ai_engine import StartupMentor  # Import the new logic
+
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-here-change-in-production'  # Change this in production
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-key-123') 
 
-# Get API key from environment variable 
+# Initialize the AI Engine
+mentor = StartupMentor()
 
 API_KEY = os.getenv('NEWS_API_KEY')
 
-# Tech news categories with enhanced search keywords and filtering
+# ... [YOUR TECH_CATEGORIES DICTIONARY HERE] 
 TECH_CATEGORIES = {
     'ai-ml': {
         'name': 'AI & Machine Learning',
@@ -152,6 +155,7 @@ TECH_CATEGORIES = {
     }
 }
 
+
 # Database initialization
 def init_db():
     conn = sqlite3.connect('users.db')
@@ -180,6 +184,8 @@ def login_required(f):
 # Hash password function
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
+
+# ... [KEEP YOUR calculate_relevance_score, filter_irrelevant_articles, and fetch_tech_news FUNCTIONS HERE] ...
 
 def calculate_relevance_score(article, category_info):
     """Calculate relevance score for an article based on category keywords"""
@@ -335,27 +341,30 @@ def fetch_tech_news(category=None):
         print(f"Unexpected error: {e}")
         return []
 
-# Authentication routes
+# --- ROUTES ---
+
+@app.route('/')
+def home():
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        
         conn = sqlite3.connect('users.db')
         cursor = conn.cursor()
         cursor.execute('SELECT id, password_hash FROM users WHERE username = ?', (username,))
         user = cursor.fetchone()
         conn.close()
-        
         if user and user[1] == hash_password(password):
             session['user_id'] = user[0]
             session['username'] = username
             flash('Login successful!', 'success')
             return redirect(url_for('dashboard'))
-        else:
-            flash('Invalid username or password', 'error')
-    
+        flash('Invalid username or password', 'error')
     return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
@@ -365,50 +374,51 @@ def signup():
         email = request.form['email']
         password = request.form['password']
         confirm_password = request.form['confirm_password']
-        
         if password != confirm_password:
             flash('Passwords do not match', 'error')
             return render_template('signup.html')
-        
         conn = sqlite3.connect('users.db')
         cursor = conn.cursor()
-        
         try:
             cursor.execute('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
                          (username, email, hash_password(password)))
             conn.commit()
-            flash('Account created successfully! Please log in.', 'success')
+            flash('Account created successfully!', 'success')
             conn.close()
             return redirect(url_for('login'))
         except sqlite3.IntegrityError:
-            flash('Username or email already exists', 'error')
+            flash('User already exists', 'error')
             conn.close()
-    
     return render_template('signup.html')
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    flash('You have been logged out', 'info')
-    return redirect(url_for('login'))
-
-# Main routes
-@app.route('/')
-def home():
-    if 'user_id' in session:
-        return redirect(url_for('dashboard'))
-    return redirect(url_for('login'))
 
 @app.route('/dashboard')
 @login_required
 def dashboard():
     category = request.args.get('category')
     articles = fetch_tech_news(category)
-    
-    if not articles:
-        flash('Unable to fetch news at the moment. Please try again later.', 'warning')
-    
     return render_template('dashboard.html', articles=articles, categories=TECH_CATEGORIES, current_category=category)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+# --- THE NEW AI ANALYSIS ROUTE ---
+
+@app.route("/analyze", methods=["POST"])
+@login_required
+def analyze_article():
+    """Takes article text and returns a 'Startup Mentor' analysis."""
+    article_text = request.json.get("text")
+    
+    if not article_text:
+        return jsonify({"error": "No article text provided"}), 400
+
+    # Call the AI Engine service we created earlier
+    analysis_data = mentor.analyze_content(article_text)
+    
+    # Returns the JSON: {"analysis": "...", "socratic_question": "..."}
+    return jsonify(analysis_data)
 
 if __name__ == '__main__':
     init_db()
