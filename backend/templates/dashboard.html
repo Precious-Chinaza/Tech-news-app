@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if current_category %}{{ categories[current_category]['name'] }} - {% endif %}Tech Pulse Dashboard</title>
+    <title>{% if current_category %}{{ categories[current_category]['name'] }} - {% endif %}Discuss Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📱</text></svg>">
 </head>
 <body>
     <div class="dashboard-container">
-        <!-- Navigation Bar -->
         <nav class="navbar">
             <div class="nav-header">
-                <h1 class="nav-logo">Tech Pulse 📺</h1>
+                <h1 class="nav-logo">Discuss</h1>
                 <div class="nav-user">
                     <span>Welcome, {{ session.username }}!</span>
                     <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
@@ -32,7 +31,6 @@
             </div>
         </nav>
 
-        <!-- Main Content -->
         <div class="main-content">
             <div class="content-header">
                 {% if current_category %}
@@ -58,34 +56,32 @@
                 <main class="news-grid">
                     {% for article in articles %}
                         <article class="news-card">
-    {% if article.urlToImage %}
-        <img src="{{ article.urlToImage }}" alt="{{ article.title }}" class="news-image" loading="lazy">
-    {% endif %}
-    
-    <div class="news-content">
-        <h3 class="news-title">{{ article.title }}</h3>
-        
-        <div class="news-meta">
-            {% if article.source and article.source.name %}
-                <span class="news-source">{{ article.source.name }}</span>
-            {% endif %}
-        </div>
-        
-        {% if article.description %}
-            <p id="article-text-{{ loop.index }}" class="news-description">{{ article.description }}</p>
-        {% endif %}
-        
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <a href="{{ article.url }}" target="_blank" class="read-more" style="flex: 1; text-align: center;">Source</a>
-            
-            <button class="mentor-btn" 
-                    onclick="toggleMentor(); analyzeArticle('{{ loop.index }}')" 
-                    style="flex: 1;">
-                Mentor Analysis
-            </button>
-        </div>
-    </div>
-</article>
+                            {% if article.urlToImage %}
+                                <img src="{{ article.urlToImage }}" alt="{{ article.title }}" class="news-image" loading="lazy">
+                            {% endif %}
+                            
+                            <div class="news-content">
+                                <h3 class="news-title">{{ article.title }}</h3>
+                                
+                                <div class="news-meta">
+                                    {% if article.source and article.source.name %}
+                                        <span class="news-source">{{ article.source.name }}</span>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if article.description %}
+                                    <p class="news-description">{{ article.description[:150] }}...</p>
+                                {% else %}
+                                    <p class="news-description">{{ article.title }}</p>
+                                {% endif %}
+                                
+                                <div style="margin-top: 15px;">
+                                    <a href="{{ url_for('reader_mode', url=article.url) }}" class="mentor-btn" style="display: block; text-align: center; text-decoration: none;">
+                                        ⚡ Read and Discuss News
+                                    </a>
+                                </div>
+                            </div>
+                        </article>
                     {% endfor %}
                 </main>
             {% else %}
@@ -95,21 +91,13 @@
                 </div>
             {% endif %}
 
-            <div id="mentor-panel" class="mentor-panel">
-    <div class="drag-handle"></div>
-    <div class="mentor-header">
-        <span class="mentor-badge">Startup Mentor</span>
-        <button onclick="toggleMentor()" style="border:none; background:none; cursor:pointer; font-size:1.5rem;">✕</button>
-    </div>
-    <div id="mentor-display">
-        </div>
-   </div>
-
             <footer class="footer">
                 <p>Powered by <a href="https://newsapi.org" target="_blank" rel="noopener noreferrer">NewsAPI</a> | 
-                   Tech Pulse Dashboard</p>
+                    Discuss Dashboard</p>
             </footer>
         </div>
     </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
 </body>
 </html>

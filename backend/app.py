@@ -7,10 +7,14 @@ from datetime import datetime
 from functools import wraps
 from dotenv import load_dotenv 
 from services.ai_engine import StartupMentor  # Import the new logic
+from newspaper import Article
 
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(__name__, 
+            template_folder='templates', 
+            static_folder='static')
+
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-key-123') 
 
 # Initialize the AI Engine
@@ -403,6 +407,33 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+    # --- THE NEW READER ROUTE ---
+
+@app.route('/reader')
+@login_required
+def reader_mode():
+    """Fetches full article content to stop the 'middleman' redirect."""
+    url = request.args.get('url')
+    if not url:
+        return redirect(url_for('dashboard'))
+    
+    try:
+        # 1. Download and Parse the article
+        article = Article(url)
+        article.download()
+        article.parse()
+        
+        # 2. Render the new template ( create reader.html next)
+        return render_template('reader.html', 
+                               title=article.title, 
+                               content=article.text, 
+                               source_url=url,
+                               image=article.top_image)
+    except Exception as e:
+        print(f"Scraping failed: {e}")
+        # If scraping fails (some sites block it), redirect to original
+        return redirect(url)
+
 # --- THE NEW AI ANALYSIS ROUTE ---
 
 @app.route("/analyze", methods=["POST"])
@@ -415,7 +446,7 @@ def analyze_article():
         return jsonify({"error": "No article text provided"}), 400
 
     # Call the AI Engine service we created earlier
-    analysis_data = mentor.analyze_content(article_text)
+    analysis_data = mentor.get_analysis(article_text)
     
     # Returns the JSON: {"analysis": "...", "socratic_question": "..."}
     return jsonify(analysis_data)
@@ -423,3 +454,5 @@ def analyze_article():
 if __name__ == '__main__':
     init_db()
     app.run(debug=True)
+
+    
