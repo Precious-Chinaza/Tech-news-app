@@ -407,23 +407,19 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-    # --- THE NEW READER ROUTE ---
-
+# --- THE NEW READER ROUTE ---
 @app.route('/reader')
 @login_required
 def reader_mode():
-    """Fetches full article content to stop the 'middleman' redirect."""
     url = request.args.get('url')
     if not url:
         return redirect(url_for('dashboard'))
     
     try:
-        # 1. Download and Parse the article
         article = Article(url)
         article.download()
         article.parse()
         
-        # 2. Render the new template ( create reader.html next)
         return render_template('reader.html', 
                                title=article.title, 
                                content=article.text, 
@@ -431,22 +427,27 @@ def reader_mode():
                                image=article.top_image)
     except Exception as e:
         print(f"Scraping failed: {e}")
-        # If scraping fails (some sites block it), redirect to original
         return redirect(url)
 
-# --- THE NEW AI ANALYSIS ROUTE ---
-
+# --- THE FIXED AI ANALYSIS ROUTE ---
 @app.route("/analyze", methods=["POST"])
 @login_required
 def analyze_article():
-    """Takes article text and returns a 'Startup Mentor' analysis."""
-    article_text = request.json.get("text")
+    """Handles both initial Mentor summary and follow-up chat questions."""
+    data = request.json
+    article_text = data.get("text")
+    user_question = data.get("question") # NEW: Capture the user's chat input
     
     if not article_text:
         return jsonify({"error": "No article text provided"}), 400
 
-    # Call the AI Engine service we created earlier
-    analysis_data = mentor.get_analysis(article_text)
+    if user_question:
+        # SCENARIO: User is chatting. We combine context + question.
+        combined_input = f"Article Context: {article_text}\n\nUser Question: {user_question}"
+        analysis_data = mentor.get_analysis(combined_input)
+    else:
+        # SCENARIO: First-time 'Start Discussion' click.
+        analysis_data = mentor.get_analysis(article_text)
     
     # Returns the JSON: {"analysis": "...", "socratic_question": "..."}
     return jsonify(analysis_data)
