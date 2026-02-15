@@ -1,6 +1,6 @@
-# Tech Pulse📺📺
+# Discuss
 
-This is a responsive Flask web application that fetches and displays the latest tech. news headlines using the NewsAPI.
+This is a smart and responsive Flask web application that fetches and displays the latest tech news headlines using the NewsAPI while using artificial intelligence to anaylze, discuss and educate users about concepts in the tech space.
 
 ## Features
 
@@ -11,6 +11,7 @@ This is a responsive Flask web application that fetches and displays the latest 
 - **Error Handling**: Graceful handling of API failures and network issues
 - **Mobile Responsive**: Optimized for all screen sizes
 - **Loading States**: Visual feedback while fetching news
+- Smart news analysis and discussions
 
 ## Screenshots
 
