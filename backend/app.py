@@ -1,6 +1,8 @@
 print("DEBUG: Top of file")
 from flask import Flask, render_template, flash, request, redirect, url_for, session, jsonify
 from flask_sqlalchemy import SQLAlchemy  # NEW
+from flask_mail import Mail, Message     # For Email
+from itsdangerous import URLSafeTimedSerializer # For Token Generation
 import requests
 import os
 import sys
@@ -24,10 +26,16 @@ load_dotenv()
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-key-123') 
 
-#  Render creates tables on startup
-with app.app_context():
-    db.create_all()
-    print("Database tables created successfully!")
+# --- EMAIL CONFIGURATION ---
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_USERNAME')
+
+mail = Mail(app)
+serializer = URLSafeTimedSerializer(app.secret_key)
 
 # --- POSTGRESQL CONFIGURATION ---
 # Format: postgresql://username:password@localhost:5432/database_name
@@ -51,6 +59,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
+    is_verified = db.Column(db.Boolean, default=False)
 
 class CachedArticle(db.Model):
     __tablename__ = 'cached_articles'
@@ -64,6 +73,15 @@ class CachedArticle(db.Model):
 # Initialize the AI Engine
 mentor = StartupMentor()
 API_KEY = os.getenv('NEWS_API_KEY')
+
+# --- DB CREATION ON STARTUP ---
+# This ensures tables are created when Gunicorn starts the app
+with app.app_context():
+    try:
+        db.create_all()
+        print("DEBUG: Database tables created successfully!")
+    except Exception as e:
+        print(f"DEBUG: Failed to create tables: {e}")
 
 # Authentication decorator
 def login_required(f):
@@ -395,6 +413,10 @@ def login():
         user = User.query.filter_by(username=username).first()
         
         if user and user.password_hash == hash_password(password):
+            if not user.is_verified:
+                flash('Please verify your email address first.', 'warning')
+                return render_template('login.html')
+
             session['user_id'] = user.id
             session['username'] = username
             
@@ -414,15 +436,57 @@ def signup():
         email = request.form['email']
         password = request.form['password']
         
-        if User.query.filter((User.username == username) | (User.email == email)).first():
-            flash('User or Email already exists', 'error')
-        else:
-            new_user = User(username=username, email=email, password_hash=hash_password(password))
-            db.session.add(new_user)
-            db.session.commit()
-            flash('Account created!', 'success')
-            return redirect(url_for('login'))
+        existing_user = User.query.filter((User.username == username) | (User.email == email)).first()
+        if existing_user:
+            flash('Username or Email already exists.', 'error')
+            return redirect(url_for('signup'))
+            
+        new_user = User(
+            username=username, 
+            email=email, 
+            password_hash=hash_password(password),
+            is_verified=False
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        
+        # Send Verification Email
+        send_verification_email(email)
+        
+        flash('Account created! Please check your email to verify your account.', 'info')
+        return redirect(url_for('login'))
+        
     return render_template('signup.html')
+
+def send_verification_email(user_email):
+    token = serializer.dumps(user_email, salt='email-confirm')
+    confirm_url = url_for('verify_email', token=token, _external=True)
+    
+    html = render_template('email_verification.html', confirm_url=confirm_url)
+    msg = Message('Confirm Your Email - Discuss Tech News', recipients=[user_email], html=html)
+    
+    try:
+        mail.send(msg)
+    except Exception as e:
+        print(f"Error sending email: {e}")
+
+@app.route('/verify_email/<token>')
+def verify_email(token):
+    try:
+        email = serializer.loads(token, salt='email-confirm', max_age=3600)
+    except Exception:
+        flash('The confirmation link is invalid or has expired.', 'error')
+        return redirect(url_for('login'))
+        
+    user = User.query.filter_by(email=email).first_or_404()
+    if user.is_verified:
+        flash('Account already verified. Please login.', 'info')
+    else:
+        user.is_verified = True
+        db.session.commit()
+        flash('You have verified your email. Thanks!', 'success')
+        
+    return redirect(url_for('login'))
 
 @app.route('/logout')
 def logout():
