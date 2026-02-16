@@ -24,6 +24,11 @@ load_dotenv()
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-key-123') 
 
+#  Render creates tables on startup
+with app.app_context():
+    db.create_all()
+    print("Database tables created successfully!")
+
 # --- POSTGRESQL CONFIGURATION ---
 # Format: postgresql://username:password@localhost:5432/database_name
 # Render and other production environments typically use DATABASE_URL
