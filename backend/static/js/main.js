@@ -127,23 +127,37 @@ async function startFullDiscussion() {
     const pZone = document.getElementById('permission-zone');
     const interactionZone = document.getElementById('interaction-zone');
     
+    // Hide permission button and show loading state
     pZone.style.display = "none";
     output.innerHTML = "<em>Analyzing the details...</em>";
 
+    // Grab the article text and the URL for the database cache
     const articleText = document.getElementById('article-text-content').innerText;
+    const articleUrl = new URLSearchParams(window.location.search).get('url');
 
     try {
         const response = await fetch('/analyze', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ text: articleText })
+            body: JSON.stringify({ 
+                text: articleText,
+                url: articleUrl 
+            })
         });
+
+        if (!response.ok) throw new Error('Quota or Server Error');
+
         const data = await response.json();
         
+        // Display AI response and show chat/voice controls
         output.innerText = data.analysis;
         interactionZone.style.display = "block"; 
+        
+        // Start the voice engine
         speak(data.analysis);
+
     } catch (err) {
+        console.error("AI Error:", err);
         output.innerText = "Quota full! Let's wait a few seconds.";
     }
 }

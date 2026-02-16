@@ -55,29 +55,28 @@
             {% if articles %}
                 <main class="news-grid">
                     {% for article in articles %}
-                        <article class="news-card">
+                       <article class="news-card">
                             {% if article.urlToImage %}
                                 <img src="{{ article.urlToImage }}" alt="{{ article.title }}" class="news-image" loading="lazy">
                             {% endif %}
                             
                             <div class="news-content">
-                                <h3 class="news-title">{{ article.title }}</h3>
-                                
                                 <div class="news-meta">
-                                    {% if article.source and article.source.name %}
-                                        <span class="news-source">{{ article.source.name }}</span>
+                                    <span class="news-source">{{ article.source.name }}</span>
+                                    {% if article.id in discussed_article_ids %}
+                                        <span style="background: #4CAF50; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: bold;">✓ DISCUSSED</span>
                                     {% endif %}
                                 </div>
                                 
-                                {% if article.description %}
-                                    <p class="news-description">{{ article.description[:150] }}...</p>
-                                {% else %}
-                                    <p class="news-description">{{ article.title }}</p>
-                                {% endif %}
+                                <h3 class="news-title">{{ article.title }}</h3>
+                                
+                                <p class="news-description">
+                                    {{ article.description[:150] if article.description else article.title }}...
+                                </p>
                                 
                                 <div style="margin-top: 15px;">
                                     <a href="{{ url_for('reader_mode', url=article.url) }}" class="mentor-btn" style="display: block; text-align: center; text-decoration: none;">
-                                        ⚡ Read and Discuss News
+                                        ⚡ {{ 'Discuss Again' if article.id in discussed_article_ids else 'Read and Discuss' }}
                                     </a>
                                 </div>
                             </div>

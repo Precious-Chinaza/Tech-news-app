@@ -1,26 +1,76 @@
+print("DEBUG: Top of file")
 from flask import Flask, render_template, flash, request, redirect, url_for, session, jsonify
+from flask_sqlalchemy import SQLAlchemy  # NEW
 import requests
 import os
-import sqlite3
+import sys
+
+# Ensure backend directory is in sys.path for imports to work
+# whether run directly or via gunicorn from root
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.append(current_dir)
+
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 from dotenv import load_dotenv 
-from services.ai_engine import StartupMentor  # Import the new logic
+from services.ai_engine import StartupMentor
 from newspaper import Article
+from datetime import datetime
 
 load_dotenv()
 
-app = Flask(__name__, 
-            template_folder='templates', 
-            static_folder='static')
-
+app = Flask(__name__, template_folder='templates', static_folder='static')
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-key-123') 
+
+# --- POSTGRESQL CONFIGURATION ---
+# Format: postgresql://username:password@localhost:5432/database_name
+# Render and other production environments typically use DATABASE_URL
+database_url = os.getenv('DATABASE_URL')
+# Ensure SSL is used for production (Render requires this)
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+# --- DATABASE MODELS ---
+
+class User(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime)
+
+class CachedArticle(db.Model):
+    __tablename__ = 'cached_articles'
+    id = db.Column(db.Integer, primary_key=True)
+    url = db.Column(db.Text, unique=True, nullable=False)
+    title = db.Column(db.String(500))
+    # This stores the AI's first breakdown to save your API quota
+    initial_analysis = db.Column(db.Text) 
+    last_updated = db.Column(db.DateTime, default=datetime.utcnow)
 
 # Initialize the AI Engine
 mentor = StartupMentor()
-
 API_KEY = os.getenv('NEWS_API_KEY')
+
+# Authentication decorator
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
 # ... [YOUR TECH_CATEGORIES DICTIONARY HERE] 
 TECH_CATEGORIES = {
@@ -160,36 +210,7 @@ TECH_CATEGORIES = {
 }
 
 
-# Database initialization
-def init_db():
-    conn = sqlite3.connect('users.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-# Authentication decorator
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-# Hash password function
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
-
-# ... [KEEP YOUR calculate_relevance_score, filter_irrelevant_articles, and fetch_tech_news FUNCTIONS HERE] ...
+# ... [ calculate_relevance_score, filter_irrelevant_articles, and fetch_tech_news FUNCTIONS HERE] ...
 
 def calculate_relevance_score(article, category_info):
     """Calculate relevance score for an article based on category keywords"""
@@ -348,24 +369,34 @@ def fetch_tech_news(category=None):
 # --- ROUTES ---
 
 @app.route('/')
-def home():
+def index():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    category = request.args.get('category')
+    articles = fetch_tech_news(category)
+    return render_template('dashboard.html', articles=articles, categories=TECH_CATEGORIES, current_category=category)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        conn = sqlite3.connect('users.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT id, password_hash FROM users WHERE username = ?', (username,))
-        user = cursor.fetchone()
-        conn.close()
-        if user and user[1] == hash_password(password):
-            session['user_id'] = user[0]
+        # Query Postgres using SQLAlchemy
+        user = User.query.filter_by(username=username).first()
+        
+        if user and user.password_hash == hash_password(password):
+            session['user_id'] = user.id
             session['username'] = username
+            
+            # Track last login
+            user.last_login = datetime.utcnow()
+            db.session.commit()
+            
             flash('Login successful!', 'success')
             return redirect(url_for('dashboard'))
         flash('Invalid username or password', 'error')
@@ -377,83 +408,107 @@ def signup():
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
-        confirm_password = request.form['confirm_password']
-        if password != confirm_password:
-            flash('Passwords do not match', 'error')
-            return render_template('signup.html')
-        conn = sqlite3.connect('users.db')
-        cursor = conn.cursor()
-        try:
-            cursor.execute('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
-                         (username, email, hash_password(password)))
-            conn.commit()
-            flash('Account created successfully!', 'success')
-            conn.close()
+        
+        if User.query.filter((User.username == username) | (User.email == email)).first():
+            flash('User or Email already exists', 'error')
+        else:
+            new_user = User(username=username, email=email, password_hash=hash_password(password))
+            db.session.add(new_user)
+            db.session.commit()
+            flash('Account created!', 'success')
             return redirect(url_for('login'))
-        except sqlite3.IntegrityError:
-            flash('User already exists', 'error')
-            conn.close()
     return render_template('signup.html')
-
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    category = request.args.get('category')
-    articles = fetch_tech_news(category)
-    return render_template('dashboard.html', articles=articles, categories=TECH_CATEGORIES, current_category=category)
 
 @app.route('/logout')
 def logout():
     session.clear()
+    flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
 
-# --- THE NEW READER ROUTE ---
+# --- THE SMART AI ANALYSIS ROUTE (CACHE ENABLED) ---
+@app.route("/analyze", methods=["POST"])
+@login_required
+def analyze_article():
+    data = request.json
+    article_text = data.get("text")
+    user_question = data.get("question")
+    article_url = data.get("url") # Ensure your main.js sends the URL!
+
+    if not article_text:
+        return jsonify({"error": "No text provided"}), 400
+
+    # 1. CHECK CACHE FOR INITIAL ANALYSIS
+    # If it's a first-time discussion (no question) and we have it in DB, serve it!
+    if not user_question and article_url:
+        cached = CachedArticle.query.filter_by(url=article_url).first()
+        if cached and cached.initial_analysis:
+            print("--- Serving from Postgres Cache ---")
+            return jsonify({"analysis": cached.initial_analysis})
+
+    # 2. CALL AI (If not in cache or if it's a specific follow-up question)
+    try:
+        if user_question:
+            combined_input = f"Context: {article_text}\n\nQuestion: {user_question}"
+            analysis_data = mentor.get_analysis(combined_input)
+        else:
+            analysis_data = mentor.get_analysis(article_text)
+            
+            # 3. SAVE TO CACHE (Only cache the initial summary)
+            if article_url:
+                new_cache = CachedArticle(
+                    url=article_url, 
+                    initial_analysis=analysis_data.get('analysis')
+                )
+                db.session.merge(new_cache) # Merge avoids duplicate errors
+                db.session.commit()
+
+        return jsonify(analysis_data)
+    
+    except Exception as e:
+        print(f"AI Snag: {e}")
+        return jsonify({"analysis": "My brain hit a snag. Let's try that again in a second."}), 500
+
+# --- UPDATED READER ROUTE ---
 @app.route('/reader')
 @login_required
 def reader_mode():
     url = request.args.get('url')
-    if not url:
+    if not url: 
         return redirect(url_for('dashboard'))
     
+    # 1. Check if we already have an AI analysis for this URL
+    cached = CachedArticle.query.filter_by(url=url).first()
+    existing_analysis = cached.initial_analysis if cached else None
+    
     try:
+        # 2. Fetch the article content
         article = Article(url)
         article.download()
         article.parse()
         
+        # 3. Pass the 'existing_analysis' to the template
         return render_template('reader.html', 
                                title=article.title, 
                                content=article.text, 
                                source_url=url,
-                               image=article.top_image)
+                               image=article.top_image,
+                               existing_analysis=existing_analysis)
     except Exception as e:
-        print(f"Scraping failed: {e}")
+        print(f"Scraping error: {e}")
         return redirect(url)
 
-# --- THE FIXED AI ANALYSIS ROUTE ---
-@app.route("/analyze", methods=["POST"])
-@login_required
-def analyze_article():
-    """Handles both initial Mentor summary and follow-up chat questions."""
-    data = request.json
-    article_text = data.get("text")
-    user_question = data.get("question") # NEW: Capture the user's chat input
-    
-    if not article_text:
-        return jsonify({"error": "No article text provided"}), 400
-
-    if user_question:
-        # SCENARIO: User is chatting. We combine context + question.
-        combined_input = f"Article Context: {article_text}\n\nUser Question: {user_question}"
-        analysis_data = mentor.get_analysis(combined_input)
-    else:
-        # SCENARIO: First-time 'Start Discussion' click.
-        analysis_data = mentor.get_analysis(article_text)
-    
-    # Returns the JSON: {"analysis": "...", "socratic_question": "..."}
-    return jsonify(analysis_data)
-
 if __name__ == '__main__':
-    init_db()
-    app.run(debug=True)
+    with app.app_context():
+        # Create tables if they don't exist
+        print("DEBUG: Creating tables...")
+        try:
+            db.create_all()
+            print("DEBUG: Tables created.")
+        except Exception as e:
+            print(f"DEBUG: Exception: {e}")
 
+    # Use environment variable for Debug mode, default to False in production
+    debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() in ('true', '1', 't')
     
+    print("Starting Flask app...")
+    app.run(debug=debug_mode, host='0.0.0.0', port=5000)
