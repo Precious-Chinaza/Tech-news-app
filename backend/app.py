@@ -501,7 +501,7 @@ def logout():
 
 
 
-
+@app.route('/db_init')
 def db_init():
 
     import sqlalchemy
