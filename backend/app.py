@@ -497,7 +497,7 @@ def logout():
     session.clear()
     flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
-git 
+
 # --- THE SMART AI ANALYSIS ROUTE (CACHE ENABLED) ---
 @app.route("/analyze", methods=["POST"])
 @login_required
@@ -570,25 +570,35 @@ def reader_mode():
         print(f"Scraping error: {e}")
         return redirect(url)
 
-#delete this afterwards
-@app.route('/setup-db-xk92')
-def setup_db():
-    try:
-        db.create_all()
-        return "✅ Tables created successfully!"
-    except Exception as e:
-        return f"❌ Error: {str(e)}"
-
 
 with app.app_context():
     import sqlalchemy
     try:
-        db.session.execute(sqlalchemy.text('SELECT 1'))
-        db.create_all()
-        print("✅ Tables created:", db.engine.table_names() if hasattr(db.engine, 'table_names') else "done")
+        db.session.execute(sqlalchemy.text("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(80) UNIQUE NOT NULL,
+                email VARCHAR(120) UNIQUE NOT NULL,
+                password_hash VARCHAR(200) NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW(),
+                last_login TIMESTAMP,
+                is_verified BOOLEAN DEFAULT FALSE
+            );
+        """))
+        db.session.execute(sqlalchemy.text("""
+            CREATE TABLE IF NOT EXISTS cached_articles (
+                id SERIAL PRIMARY KEY,
+                url TEXT UNIQUE NOT NULL,
+                title VARCHAR(500),
+                initial_analysis TEXT,
+                last_updated TIMESTAMP DEFAULT NOW()
+            );
+        """))
+        db.session.commit()
+        print("✅ Tables created via raw SQL!")
     except Exception as e:
-        print(f"❌ DATABASE ERROR: {e}")
-        raise e  # This will make the deploy fail loudly instead of silently
+        print(f"❌ Error: {e}")
+        db.session.rollback()
 
 if __name__ == "__main__":
     debug_mode = os.environ.get('FLASK_DEBUG') == 'True'
