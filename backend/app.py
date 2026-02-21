@@ -497,29 +497,7 @@ def logout():
     session.clear()
     flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
-
-
-
-
-@app.route('/db-init')
-def db_init():
-
-    import sqlalchemy
-    try:
-        # Show what database we're actually connecting to
-        db_url = app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT SET')
-        # Mask password for safety
-        safe_url = db_url.split('@')[-1] if '@' in db_url else db_url
-        
-        db.session.execute(sqlalchemy.text('SELECT 1'))
-        db.create_all()
-        db.session.execute(sqlalchemy.text('SELECT * FROM users LIMIT 1'))
-        return f"✅ Success! Connected to: {safe_url} — Tables created and verified."
-    except Exception as e:
-        db_url = app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT SET')
-        safe_url = db_url.split('@')[-1] if '@' in db_url else db_url
-        return f"❌ Error: {str(e)} | DB URL ending: {safe_url}"
-
+git 
 # --- THE SMART AI ANALYSIS ROUTE (CACHE ENABLED) ---
 @app.route("/analyze", methods=["POST"])
 @login_required
@@ -592,16 +570,25 @@ def reader_mode():
         print(f"Scraping error: {e}")
         return redirect(url)
 
+#delete this afterwards
+@app.route('/setup-db-xk92')
+def setup_db():
+    try:
+        db.create_all()
+        return "✅ Tables created successfully!"
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+
 with app.app_context():
     import sqlalchemy
     try:
-        # 1. Check if the connection is alive
         db.session.execute(sqlalchemy.text('SELECT 1'))
-        # 2. Create tables
         db.create_all()
-        print("✅ DATABASE INITIALIZED: Tables 'users' and 'cached_articles' created.")
+        print("✅ Tables created:", db.engine.table_names() if hasattr(db.engine, 'table_names') else "done")
     except Exception as e:
         print(f"❌ DATABASE ERROR: {e}")
+        raise e  # This will make the deploy fail loudly instead of silently
 
 if __name__ == "__main__":
     debug_mode = os.environ.get('FLASK_DEBUG') == 'True'
