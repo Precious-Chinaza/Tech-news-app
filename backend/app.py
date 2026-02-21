@@ -498,6 +498,28 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
 
+
+
+
+
+def db_init():
+
+    import sqlalchemy
+    try:
+        # Show what database we're actually connecting to
+        db_url = app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT SET')
+        # Mask password for safety
+        safe_url = db_url.split('@')[-1] if '@' in db_url else db_url
+        
+        db.session.execute(sqlalchemy.text('SELECT 1'))
+        db.create_all()
+        db.session.execute(sqlalchemy.text('SELECT * FROM users LIMIT 1'))
+        return f"✅ Success! Connected to: {safe_url} — Tables created and verified."
+    except Exception as e:
+        db_url = app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT SET')
+        safe_url = db_url.split('@')[-1] if '@' in db_url else db_url
+        return f"❌ Error: {str(e)} | DB URL ending: {safe_url}"
+
 # --- THE SMART AI ANALYSIS ROUTE (CACHE ENABLED) ---
 @app.route("/analyze", methods=["POST"])
 @login_required
