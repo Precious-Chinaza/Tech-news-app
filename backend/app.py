@@ -41,13 +41,17 @@ serializer = URLSafeTimedSerializer(app.secret_key)
 # Format: postgresql://username:password@localhost:5432/database_name
 # Render and other production environments typically use DATABASE_URL
 database_url = os.getenv('DATABASE_URL')
-# Ensure SSL is used for production (Render requires this)
-if database_url and database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
+if database_url:
+    # Handle the 'postgres' vs 'postgresql' fix
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    
+    # Force SSL mode if it's missing (Render requirement)
+    if "sslmode" not in database_url:
+        separator = "&" if "?" in database_url else "?"
+        database_url += f"{separator}sslmode=require"
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
 
 # --- DATABASE MODELS ---
 
@@ -75,13 +79,19 @@ mentor = StartupMentor()
 API_KEY = os.getenv('NEWS_API_KEY')
 
 # --- DB CREATION ON STARTUP ---
-# This ensures tables are created when Gunicorn starts the app
-with app.app_context():
-    try:
-        db.create_all()
-        print("DEBUG: Database tables created successfully!")
-    except Exception as e:
-        print(f"DEBUG: Failed to create tables: {e}")
+# move this lower, after the models are defined, to ensure SQLAlchemy sees them
+def create_tables():
+    with app.app_context():
+        try:
+            # This force-imports the models to make sure they are registered
+            db.reflect() 
+            db.create_all()
+            print("✅ DEBUG: Database tables verified/created successfully!")
+        except Exception as e:
+            print(f"❌ DEBUG: Failed to create tables: {e}")
+
+# Call the function immediately
+create_tables()
 
 # Authentication decorator
 def login_required(f):
