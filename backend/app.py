@@ -57,15 +57,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 # Initialize SQLAlchemy DB object
 db = SQLAlchemy(app)
 
-# Database initialization check
-with app.app_context():
-    inspector = inspect(db.engine)
-    if not inspector.has_table("users"):
-        print("Database tables not found. Creating tables...")
-        db.create_all()
-        print("Database tables created successfully!")
-    else:
-        print("Database tables already exist.")
+
 
 # --- DATABASE MODELS ---
 
@@ -91,18 +83,6 @@ class CachedArticle(db.Model):
 # Initialize the AI Engine
 mentor = StartupMentor()
 API_KEY = os.getenv('NEWS_API_KEY')
-
-# --- DB CREATION ON STARTUP ---
-# move this lower, after the models are defined, to ensure SQLAlchemy sees them
-def create_tables():
-    with app.app_context():
-        try:
-            # This force-imports the models to make sure they are registered
-            db.reflect() 
-            db.create_all()
-            print("✅ DEBUG: Database tables verified/created successfully!")
-        except Exception as e:
-            print(f"❌ DEBUG: Failed to create tables: {e}")
 
 # Call the function immediately
 create_tables()
