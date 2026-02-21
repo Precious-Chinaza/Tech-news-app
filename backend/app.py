@@ -1,6 +1,7 @@
 print("DEBUG: Top of file")
 from flask import Flask, render_template, flash, request, redirect, url_for, session, jsonify
-from flask_sqlalchemy import SQLAlchemy  # NEW
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import inspect # Import inspect
 from flask_mail import Mail, Message     # For Email
 from itsdangerous import URLSafeTimedSerializer # For Token Generation
 import requests
@@ -52,6 +53,19 @@ if database_url:
         database_url += f"{separator}sslmode=require"
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+
+# Initialize SQLAlchemy DB object
+db = SQLAlchemy(app)
+
+# Database initialization check
+with app.app_context():
+    inspector = inspect(db.engine)
+    if not inspector.has_table("users"):
+        print("Database tables not found. Creating tables...")
+        db.create_all()
+        print("Database tables created successfully!")
+    else:
+        print("Database tables already exist.")
 
 # --- DATABASE MODELS ---
 
