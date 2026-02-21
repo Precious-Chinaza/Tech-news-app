@@ -590,18 +590,17 @@ def reader_mode():
         print(f"Scraping error: {e}")
         return redirect(url)
 
-if __name__ == '__main__':
-    with app.app_context():
-        # Create tables if they don't exist
-        print("DEBUG: Creating tables...")
-        try:
-            db.create_all()
-            print("DEBUG: Tables created.")
-        except Exception as e:
-            print(f"DEBUG: Exception: {e}")
+with app.app_context():
+    import sqlalchemy
+    try:
+        # 1. Check if the connection is alive
+        db.session.execute(sqlalchemy.text('SELECT 1'))
+        # 2. Create tables
+        db.create_all()
+        print("✅ DATABASE INITIALIZED: Tables 'users' and 'cached_articles' created.")
+    except Exception as e:
+        print(f"❌ DATABASE ERROR: {e}")
 
-    # Use environment variable for Debug mode, default to False in production
-    debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() in ('true', '1', 't')
-    
-    print("Starting Flask app...")
+if __name__ == "__main__":
+    debug_mode = os.environ.get('FLASK_DEBUG') == 'True'
     app.run(debug=debug_mode, host='0.0.0.0', port=5000)
