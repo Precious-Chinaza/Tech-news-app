@@ -464,6 +464,15 @@ def signup():
         
     return render_template('signup.html')
 
+import threading
+
+def send_async_email(app, msg):
+    with app.app_context():
+        try:
+            mail.send(msg)
+        except Exception as e:
+            print(f"Error sending email: {e}")
+
 def send_verification_email(user_email):
     token = serializer.dumps(user_email, salt='email-confirm')
     confirm_url = url_for('verify_email', token=token, _external=True)
@@ -471,10 +480,8 @@ def send_verification_email(user_email):
     html = render_template('email_verification.html', confirm_url=confirm_url)
     msg = Message('Confirm Your Email - Discuss Tech News', recipients=[user_email], html=html)
     
-    try:
-        mail.send(msg)
-    except Exception as e:
-        print(f"Error sending email: {e}")
+    # Use threading to send email asynchronously
+    threading.Thread(target=send_async_email, args=(app._get_current_object(), msg)).start()
 
 @app.route('/verify_email/<token>')
 def verify_email(token):
