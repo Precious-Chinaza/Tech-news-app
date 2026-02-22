@@ -481,7 +481,10 @@ def send_verification_email(user_email):
     msg = Message('Confirm Your Email - Discuss Tech News', recipients=[user_email], html=html)
     
     # Use threading to send email asynchronously
-    threading.Thread(target=send_async_email, args=(app._get_current_object(), msg)).start()
+    # app._get_current_object() extracts the actual Flask app instance from the proxy
+    # In some contexts app might be a proxy, so we ensure we get the real object
+    real_app = app._get_current_object() if hasattr(app, '_get_current_object') else app
+    threading.Thread(target=send_async_email, args=(real_app, msg)).start()
 
 @app.route('/verify_email/<token>')
 def verify_email(token):
