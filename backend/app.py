@@ -1,6 +1,7 @@
 print("DEBUG: Top of file")
 from flask import Flask, render_template, flash, request, redirect, url_for, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate # Import Migrate
 from sqlalchemy import inspect # Import inspect
 from flask_mail import Mail, Message     # For Email
 from itsdangerous import URLSafeTimedSerializer # For Token Generation
@@ -48,7 +49,8 @@ if database_url:
         database_url = database_url.replace("postgres://", "postgresql://", 1)
     
     # Force SSL mode if it's missing (Render requirement)
-    if "sslmode" not in database_url:
+    # Only apply sslmode=require if not connecting to localhost
+    if "sslmode" not in database_url and "localhost" not in database_url:
         separator = "&" if "?" in database_url else "?"
         database_url += f"{separator}sslmode=require"
 
@@ -56,6 +58,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 
 # Initialize SQLAlchemy DB object
 db = SQLAlchemy(app)
+migrate = Migrate(app, db) # Initialize Flask-Migrate
 
 
 
@@ -84,8 +87,7 @@ class CachedArticle(db.Model):
 mentor = StartupMentor()
 API_KEY = os.getenv('NEWS_API_KEY')
 
-# Call the function immediately
-create_tables()
+
 
 # Authentication decorator
 def login_required(f):
@@ -571,34 +573,8 @@ def reader_mode():
         return redirect(url)
 
 
-with app.app_context():
-    import sqlalchemy
-    try:
-        db.session.execute(sqlalchemy.text("""
-            CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
-                username VARCHAR(80) UNIQUE NOT NULL,
-                email VARCHAR(120) UNIQUE NOT NULL,
-                password_hash VARCHAR(200) NOT NULL,
-                created_at TIMESTAMP DEFAULT NOW(),
-                last_login TIMESTAMP,
-                is_verified BOOLEAN DEFAULT FALSE
-            );
-        """))
-        db.session.execute(sqlalchemy.text("""
-            CREATE TABLE IF NOT EXISTS cached_articles (
-                id SERIAL PRIMARY KEY,
-                url TEXT UNIQUE NOT NULL,
-                title VARCHAR(500),
-                initial_analysis TEXT,
-                last_updated TIMESTAMP DEFAULT NOW()
-            );
-        """))
-        db.session.commit()
-        print("✅ Tables created via raw SQL!")
-    except Exception as e:
-        print(f"❌ Error: {e}")
-        db.session.rollback()
+
+
 
 if __name__ == "__main__":
     debug_mode = os.environ.get('FLASK_DEBUG') == 'True'
