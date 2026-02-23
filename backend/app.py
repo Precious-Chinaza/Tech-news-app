@@ -451,15 +451,15 @@ def signup():
             username=username, 
             email=email, 
             password_hash=hash_password(password),
-            is_verified=False
+            is_verified=True # Temporary: Auto-verify
         )
         db.session.add(new_user)
         db.session.commit()
         
         # Send Verification Email
-        send_verification_email(email)
+        # send_verification_email(email)
         
-        flash('Account created! Please check your email to verify your account.', 'info')
+        flash('Account created! You can now login.', 'success')
         return redirect(url_for('login'))
         
     return render_template('signup.html')
