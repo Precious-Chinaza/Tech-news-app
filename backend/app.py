@@ -8,6 +8,7 @@ from itsdangerous import URLSafeTimedSerializer # For Token Generation
 import requests
 import os
 import sys
+import re
 
 # Ensure backend directory is in sys.path for imports to work
 # whether run directly or via gunicorn from root
@@ -435,12 +436,53 @@ def login():
         flash('Invalid username or password', 'error')
     return render_template('login.html')
 
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form['email']
+        user = User.query.filter_by(email=email).first()
+        if user:
+            send_password_reset_email(user.email)
+        flash('If an account exists with this email, a reset link has been sent.', 'info')
+        return redirect(url_for('login'))
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    try:
+        email = serializer.loads(token, salt='password-reset', max_age=3600)
+    except Exception:
+        flash('The reset link is invalid or has expired.', 'error')
+        return redirect(url_for('forgot_password'))
+    
+    if request.method == 'POST':
+        password = request.form['password']
+        confirm_password = request.form.get('confirm_password')
+        
+        if password != confirm_password:
+            flash('Passwords do not match.', 'error')
+            return render_template('reset_password.html', token=token)
+            
+        user = User.query.filter_by(email=email).first_or_404()
+        user.password_hash = hash_password(password)
+        db.session.commit()
+        
+        flash('Your password has been updated! You can now login.', 'success')
+        return redirect(url_for('login'))
+        
+    return render_template('reset_password.html', token=token)
+
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
+        
+        # Check username pattern (letters only)
+        if not re.match(r'^[A-Za-z]+$', username):
+            flash('Username must contain only letters.', 'error')
+            return redirect(url_for('signup'))
         
         existing_user = User.query.filter((User.username == username) | (User.email == email)).first()
         if existing_user:
@@ -483,6 +525,16 @@ def send_verification_email(user_email):
     # Use threading to send email asynchronously
     # app._get_current_object() extracts the actual Flask app instance from the proxy
     # In some contexts app might be a proxy, so we ensure we get the real object
+    real_app = app._get_current_object() if hasattr(app, '_get_current_object') else app
+    threading.Thread(target=send_async_email, args=(real_app, msg)).start()
+
+def send_password_reset_email(user_email):
+    token = serializer.dumps(user_email, salt='password-reset')
+    reset_url = url_for('reset_password', token=token, _external=True)
+    
+    html = f"<p>Click here to reset your password: <a href='{reset_url}'>{reset_url}</a></p>"
+    msg = Message('Password Reset - Discuss Tech News', recipients=[user_email], html=html)
+    
     real_app = app._get_current_object() if hasattr(app, '_get_current_object') else app
     threading.Thread(target=send_async_email, args=(real_app, msg)).start()
 
