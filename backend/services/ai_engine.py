@@ -116,10 +116,11 @@ class StartupMentor:
 
     def generate_audio(self, text, speaker):
         if not self.elevenlabs_api_key:
-            print("ElevenLabs API Key missing!")
+            print("!!! ELEVENLABS API KEY MISSING FROM ENV !!!")
             return None
             
         voice_id = self.voice_alex if speaker == "Alex" else self.voice_maya
+        print(f"--- Generating Audio for {speaker} using voice {voice_id} ---")
         
         url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
         headers = {
@@ -131,20 +132,23 @@ class StartupMentor:
             "text": text,
             "model_id": "eleven_monolingual_v1",
             "voice_settings": {
-                "stability": 0.5,
-                "similarity_boost": 0.5
+                "stability": 0.8,      # Increased for more consistency
+                "similarity_boost": 0.8, # Increased for better character matching
+                "style": 0.5,
+                "use_speaker_boost": True
             }
         }
         
         try:
             response = requests.post(url, json=data, headers=headers)
             if response.status_code == 200:
+                print(f"--- Audio Successfully Generated ({len(response.content)} bytes) ---")
                 return response.content
             else:
-                print(f"ElevenLabs Error: {response.text}")
+                print(f"!!! ELEVENLABS API ERROR: {response.status_code} - {response.text} !!!")
                 return None
         except Exception as e:
-            print(f"Audio Gen Error: {e}")
+            print(f"!!! CRITICAL AUDIO GEN ERROR: {e} !!!")
             return None
 
     def generate_debate_response(self, context_text, user_input):

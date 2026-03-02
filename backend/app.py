@@ -82,6 +82,7 @@ class CachedArticle(db.Model):
     title = db.Column(db.String(500))
     # This stores the AI's first breakdown to save your API quota
     initial_analysis = db.Column(db.Text) 
+    debate_script = db.Column(db.Text) # Stores JSON script for roundtable
     last_updated = db.Column(db.DateTime, default=datetime.utcnow)
 
 # Initialize the AI Engine
@@ -641,10 +642,31 @@ def reader_mode():
 def init_debate():
     data = request.json
     article_text = data.get("text")
+    article_url = data.get("url")
+    
     if not article_text:
         return jsonify({"error": "No text provided"}), 400
         
+    # Check cache first
+    if article_url:
+        cached = CachedArticle.query.filter_by(url=article_url).first()
+        if cached and cached.debate_script:
+            print("--- Serving Debate Script from Cache ---")
+            return jsonify({"script": json.loads(cached.debate_script)})
+            
+    # Generate new script
     script = mentor.generate_debate_script(article_text)
+    
+    # Save to cache
+    if article_url and script:
+        cached = CachedArticle.query.filter_by(url=article_url).first()
+        if cached:
+            cached.debate_script = json.dumps(script)
+        else:
+            new_cache = CachedArticle(url=article_url, debate_script=json.dumps(script))
+            db.session.add(new_cache)
+        db.session.commit()
+        
     return jsonify({"script": script})
 
 @app.route("/debate/audio", methods=["POST"])

@@ -37,6 +37,7 @@ if ('webkitSpeechRecognition' in window) {
 
 async function startDebate() {
     const articleText = document.getElementById('article-text-content').innerText;
+    const articleUrl = new URLSearchParams(window.location.search).get('url');
     
     // Show Overlay
     document.getElementById('debate-overlay').classList.add('active');
@@ -46,7 +47,10 @@ async function startDebate() {
         const response = await fetch('/debate/init', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ text: articleText })
+            body: JSON.stringify({ 
+                text: articleText,
+                url: articleUrl 
+            })
         });
         
         const data = await response.json();
@@ -93,7 +97,11 @@ async function playNextLine() {
         audio.onended = () => {
             updateVisuals(line.speaker, false);
             currentLineIndex++;
-            playNextLine(); // Recursive call for next line
+            // Add a natural 1.2 second pause before the next person speaks
+            statusText.innerText = "Brief pause...";
+            setTimeout(() => {
+                playNextLine(); 
+            }, 1200);
         };
 
         audio.play();
