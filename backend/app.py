@@ -1,5 +1,5 @@
 print("DEBUG: Top of file")
-from flask import Flask, render_template, flash, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, flash, request, redirect, url_for, session, jsonify, Response, stream_with_context
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate # Import Migrate
 from sqlalchemy import inspect # Import inspect
@@ -634,9 +634,48 @@ def reader_mode():
         print(f"Scraping error: {e}")
         return redirect(url)
 
+# --- ROUNDTABLE DEBATE ROUTES ---
 
+@app.route("/debate/init", methods=["POST"])
+@login_required
+def init_debate():
+    data = request.json
+    article_text = data.get("text")
+    if not article_text:
+        return jsonify({"error": "No text provided"}), 400
+        
+    script = mentor.generate_debate_script(article_text)
+    return jsonify({"script": script})
 
+@app.route("/debate/audio", methods=["POST"])
+@login_required
+def get_audio():
+    data = request.json
+    text = data.get("text")
+    speaker = data.get("speaker")
+    
+    if not text or not speaker:
+        return jsonify({"error": "Missing text or speaker"}), 400
+        
+    audio_content = mentor.generate_audio(text, speaker)
+    
+    if not audio_content:
+        return jsonify({"error": "Audio generation failed"}), 500
+        
+    return Response(audio_content, mimetype="audio/mpeg")
 
+@app.route("/debate/reply", methods=["POST"])
+@login_required
+def debate_reply():
+    data = request.json
+    context = data.get("context")
+    user_input = data.get("user_input")
+    
+    if not context or not user_input:
+        return jsonify({"error": "Missing context or user input"}), 400
+        
+    response_data = mentor.generate_debate_response(context, user_input)
+    return jsonify(response_data)
 
 if __name__ == "__main__":
     debug_mode = os.environ.get('FLASK_DEBUG') == 'True'

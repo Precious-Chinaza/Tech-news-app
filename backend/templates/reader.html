@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }} - Discuss</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/debate.css') }}">
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📖</text></svg>">
     
     <style>
@@ -94,6 +95,10 @@
             Start Discussion
         </button>
 
+        <button class="mentor-btn" onclick="startDebate()" style="width: 100%; margin-top: 10px; background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%); color: #555;">
+            🎙️ Listen to Roundtable
+        </button>
+
         <button id="stop-voice" onclick="stopSpeaking()" 
                 style="display:none; width: 100%; background:#ff4b2b; color:white; border:none; padding: 12px; border-radius: 8px; margin-top: 10px; font-weight: bold; cursor: pointer;">
             🛑 STOP DISCUSSION
@@ -104,8 +109,50 @@
         </div>
     </div>
 
+    <div id="debate-overlay" class="debate-overlay">
+        <div class="debate-header">
+            <div class="debate-title">
+                <span>🎙️</span> Tech Roundtable
+            </div>
+            <button class="close-debate" onclick="closeDebate()">×</button>
+        </div>
+        
+        <div class="debate-stage">
+            <!-- Alex -->
+            <div class="avatar-container" id="avatar-alex">
+                <div class="avatar" style="background-image: url('https://api.dicebear.com/7.x/avataaars/svg?seed=Alex&top=shortHair&hairColor=black&clothing=blazerAndShirt');"></div>
+                <span class="avatar-name">Alex</span>
+                <span class="avatar-role">Skeptic</span>
+            </div>
+
+            <!-- Waveform -->
+            <div class="waveform">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+            </div>
+
+            <!-- Maya -->
+            <div class="avatar-container" id="avatar-maya">
+                <div class="avatar" style="background-image: url('https://api.dicebear.com/7.x/avataaars/svg?seed=Maya&top=longHair&hairColor=auburn&clothing=collarAndSweater');"></div>
+                <span class="avatar-name">Maya</span>
+                <span class="avatar-role">Optimist</span>
+            </div>
+        </div>
+
+        <div class="debate-controls">
+            <div>
+                <p id="debate-status" class="status-text">Ready to start...</p>
+                <button id="debate-mic-btn" class="mic-btn" onclick="toggleMic()" disabled>
+                    Please Wait...
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    
-    
+    <script src="{{ url_for('static', filename='js/debate.js') }}"></script>
 </body>
 </html>

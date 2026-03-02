@@ -1,0 +1,198 @@
+/* Debate Studio Overlay */
+.debate-overlay {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 350px;
+    background: white;
+    box-shadow: 0 -5px 30px rgba(0,0,0,0.15);
+    z-index: 1000;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    transform: translateY(100%); /* Hidden by default */
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    flex-direction: column;
+}
+
+.debate-overlay.active {
+    transform: translateY(0);
+}
+
+.debate-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    border-bottom: 1px solid #eee;
+    background: #fdfbfb;
+    border-radius: 20px 20px 0 0;
+}
+
+.debate-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.close-debate {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #888;
+}
+
+.debate-stage {
+    flex: 1;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 20px 50px;
+    background: linear-gradient(to bottom, #fdfbfb, #ffffff);
+}
+
+/* Avatars */
+.avatar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    transition: transform 0.3s ease;
+    opacity: 0.5;
+}
+
+.avatar-container.speaking {
+    transform: scale(1.1);
+    opacity: 1;
+}
+
+.avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    border: 4px solid #ddd;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    position: relative;
+}
+
+.avatar-container.speaking .avatar {
+    border-color: #667eea;
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+    animation: pulse-ring 2s infinite;
+}
+
+.avatar-name {
+    font-weight: 600;
+    color: #555;
+}
+
+.avatar-role {
+    font-size: 0.8rem;
+    color: #999;
+}
+
+/* Audio Visualizer (Simple CSS Bars) */
+.waveform {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 40px;
+}
+
+.bar {
+    width: 6px;
+    background: #764ba2;
+    border-radius: 3px;
+    animation: wave 1s ease-in-out infinite;
+    height: 10%;
+}
+
+.waveform.active .bar {
+    animation-play-state: running;
+}
+
+.waveform:not(.active) .bar {
+    height: 5px;
+    animation-play-state: paused;
+}
+
+/* Stagger animations */
+.bar:nth-child(1) { animation-duration: 0.8s; }
+.bar:nth-child(2) { animation-duration: 1.1s; }
+.bar:nth-child(3) { animation-duration: 0.9s; }
+.bar:nth-child(4) { animation-duration: 1.2s; }
+.bar:nth-child(5) { animation-duration: 0.7s; }
+
+@keyframes wave {
+    0%, 100% { height: 10%; }
+    50% { height: 100%; }
+}
+
+@keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4); }
+    70% { box-shadow: 0 0 0 15px rgba(102, 126, 234, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0); }
+}
+
+/* Controls */
+.debate-controls {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+    border-top: 1px solid #eee;
+    gap: 20px;
+}
+
+.mic-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 30px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: transform 0.2s;
+    box-shadow: 0 5px 15px rgba(118, 75, 162, 0.3);
+}
+
+.mic-btn:hover {
+    transform: translateY(-2px);
+}
+
+.mic-btn:disabled {
+    background: #ddd;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.mic-btn.recording {
+    background: #ff4b2b;
+    animation: pulse-red 1.5s infinite;
+}
+
+@keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(255, 75, 43, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 75, 43, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 75, 43, 0); }
+}
+
+.status-text {
+    text-align: center;
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+    font-style: italic;
+    min-height: 20px;
+}

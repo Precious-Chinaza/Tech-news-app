@@ -1,6 +1,7 @@
 import os
 import json
 import re 
+import requests
 from google import genai
 from dotenv import load_dotenv
 
@@ -11,6 +12,10 @@ class StartupMentor:
         # Using the new Google GenAI SDK and Gemini 3 Flash
         self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
         self.model_id = "gemini-3-flash-preview"
+        self.elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY")
+        # Voice IDs (Defaults)
+        self.voice_alex = "pNInz6obpgDQGcFmaJgB" # Adam (Male, Deep)
+        self.voice_maya = "21m00Tcm4TlvDq8ikWAM" # Rachel (Female, Clear)
 
     def get_analysis(self, news_text):
         # We MUST pass the news_text into the prompt
@@ -61,3 +66,118 @@ class StartupMentor:
                 "analysis": "I hit a snag reading this. Let's try re-analyzing!",
                 "socratic_question": "Want me to try again?"
             }
+
+    def generate_debate_script(self, news_text):
+        prompt = f"""
+        Generate a 'Roundtable Debate' script between two tech podcasters discussing this article.
+        
+        CHARACTERS:
+        1. **Alex** (Male): Skeptical, cynical, focuses on privacy risks, hype cycles, and technical limitations.
+        2. **Maya** (Female): Optimistic, visionary, focuses on innovation, future potential, and human benefit.
+
+        ARTICLE/CONTEXT: {news_text}
+
+        FORMAT:
+        - A JSON list of objects.
+        - Each object has "speaker" ("Alex" or "Maya") and "text" (their dialogue).
+        - Keep it snappy! 4-6 exchanges total.
+        - End with ONE of them asking the LISTENER (the user) a direct question to join the debate.
+        
+        EXAMPLE JSON:
+        [
+            {{"speaker": "Alex", "text": "I don't know, this seems like vaporware to me."}},
+            {{"speaker": "Maya", "text": "You're always so negative! Think about the applications for healthcare."}},
+            {{"speaker": "Alex", "text": "But what about the data privacy? Who owns that data?"}},
+            {{"speaker": "Maya", "text": "That's a fair point. Hey listener, would you trust this tech with your data?"}}
+        ]
+        """
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_id,
+                contents=prompt,
+                config={'response_mime_type': 'application/json'}
+            )
+            
+            text = response.text.strip()
+            # Clean up potential markdown code blocks
+            if text.startswith("```json"):
+                text = text[7:-3]
+            elif text.startswith("```"):
+                text = text[3:-3]
+                
+            match = re.search(r'\[.*\]', text, re.DOTALL)
+            if match:
+                return json.loads(match.group())
+            return json.loads(text)
+            
+        except Exception as e:
+            print(f"Debate Script Error: {e}")
+            return []
+
+    def generate_audio(self, text, speaker):
+        if not self.elevenlabs_api_key:
+            print("ElevenLabs API Key missing!")
+            return None
+            
+        voice_id = self.voice_alex if speaker == "Alex" else self.voice_maya
+        
+        url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+        headers = {
+            "Accept": "audio/mpeg",
+            "Content-Type": "application/json",
+            "xi-api-key": self.elevenlabs_api_key
+        }
+        data = {
+            "text": text,
+            "model_id": "eleven_monolingual_v1",
+            "voice_settings": {
+                "stability": 0.5,
+                "similarity_boost": 0.5
+            }
+        }
+        
+        try:
+            response = requests.post(url, json=data, headers=headers)
+            if response.status_code == 200:
+                return response.content
+            else:
+                print(f"ElevenLabs Error: {response.text}")
+                return None
+        except Exception as e:
+            print(f"Audio Gen Error: {e}")
+            return None
+
+    def generate_debate_response(self, context_text, user_input):
+        prompt = f"""
+        You are roleplaying as Alex (Skeptic) and Maya (Optimist) in a live podcast.
+        
+        CONTEXT: The user just joined the conversation.
+        PREVIOUS DISCUSSION TOPIC: {context_text}
+        USER SAID: "{user_input}"
+        
+        TASK:
+        Generate a response from EITHER Alex OR Maya (whoever would naturally respond best).
+        - If the user agrees with Maya, Alex should challenge them.
+        - If the user agrees with Alex, Maya should offer a counterpoint.
+        - Keep it short (1-2 sentences).
+        
+        JSON FORMAT:
+        {{
+            "speaker": "Name",
+            "text": "Response text"
+        }}
+        """
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_id,
+                contents=prompt,
+                config={'response_mime_type': 'application/json'}
+            )
+            text = response.text.strip()
+            match = re.search(r'\{.*\}', text, re.DOTALL)
+            if match:
+                return json.loads(match.group())
+            return json.loads(text)
+        except Exception as e:
+            print(f"Debate Response Error: {e}")
+            return {"speaker": "Maya", "text": "That's an interesting perspective! Thanks for sharing."}
