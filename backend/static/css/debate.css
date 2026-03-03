@@ -210,3 +210,80 @@
     70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); }
     100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
 }
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 768px) {
+    .debate-overlay {
+        height: 500px; /* Taller on mobile to accommodate vertical stacking */
+        border-top-left-radius: 20px;
+        border-top-right-radius: 20px;
+    }
+
+    .debate-header {
+        padding: 12px 20px;
+    }
+
+    .debate-stage {
+        flex-direction: column; /* Stack avatars on mobile */
+        gap: 20px;
+        padding: 15px;
+    }
+
+    .avatar-container {
+        flex-direction: row; /* Horizontal layout for avatars on mobile */
+        gap: 15px;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .avatar {
+        width: 60px;
+        height: 60px;
+        border-width: 3px;
+    }
+
+    .avatar-container.speaking {
+        transform: scale(1.05);
+    }
+
+    .avatar-info {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .avatar-name {
+        font-size: 0.9rem;
+    }
+
+    .avatar-role {
+        font-size: 0.7rem;
+    }
+
+    .waveform {
+        height: 40px;
+        gap: 4px;
+        order: 2; /* Move waveform below first avatar if needed, but flex-column handles it */
+    }
+
+    .bar {
+        width: 4px;
+    }
+
+    .debate-controls {
+        padding: 15px 20px 25px;
+    }
+
+    .status-text {
+        font-size: 0.85rem;
+        margin-bottom: 12px;
+    }
+
+    .mic-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 12px 20px;
+        font-size: 0.95rem;
+    }
+}
+

@@ -481,55 +481,133 @@ body {
     border-color: #bee5eb;
 }
 
-/* Responsive Design for Dashboard */
+/* Mobile Responsive Adjustments */
 @media (max-width: 768px) {
     .nav-header {
-        flex-direction: column;
-        gap: 15px;
-        text-align: center;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 15px;
     }
     
+    .nav-logo {
+        font-size: 1.4rem;
+    }
+    
+    .nav-user {
+        font-size: 0.85rem;
+        gap: 8px;
+    }
+
     .nav-categories {
-        padding: 15px 20px;
-        justify-content: center;
+        display: flex;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding: 10px 15px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        max-height: none;
+    }
+    
+    .nav-categories::-webkit-scrollbar {
+        display: none;
     }
     
     .nav-item {
+        flex: 0 0 auto;
+        padding: 6px 14px;
         font-size: 0.8rem;
-        padding: 6px 12px;
     }
-    
-    .main-content {
-        padding: 20px 15px;
+
+    .content-header {
+        margin-bottom: 25px;
     }
-    
+
     .content-header h2 {
-        font-size: 2rem;
+        font-size: 1.8rem;
+        line-height: 1.2;
     }
-    
-    .auth-card {
-        padding: 30px 25px;
+
+    .news-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .news-card {
+        border-radius: 12px;
+    }
+
+    .news-image {
+        height: 180px;
+    }
+
+    .news-content {
+        padding: 18px;
+    }
+
+    .news-title {
+        font-size: 1.1rem;
+        margin-bottom: 10px;
+    }
+
+    /* Reader Page Mobile Refinement */
+    .reader-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .pulse-sidebar {
+        position: relative;
+        top: 0;
+        width: 100%;
+        order: -1; /* Move AI sidebar to top on mobile */
+    }
+
+    .clean-article-card {
+        padding: 20px;
+        border-radius: 12px;
+    }
+
+    .clean-article-card h2 {
+        font-size: 1.5rem;
+        text-align: center;
+    }
+
+    .article-meta {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 10px;
+    }
+
+    .article-image {
+        margin: 15px -20px; /* Bleed image to edges */
+        width: calc(100% + 40px);
+        border-radius: 0;
+    }
+
+    .article-body {
+        font-size: 1rem;
+        line-height: 1.6;
     }
 }
 
 @media (max-width: 480px) {
-    .nav-categories {
-        max-height: 150px;
-    }
-    
-    .nav-item {
-        font-size: 0.75rem;
-        padding: 5px 10px;
-    }
-    
-    .content-header h2 {
+    .header h1 {
         font-size: 1.8rem;
     }
     
-    .auth-header h1 {
-        font-size: 2rem;
+    .nav-logo {
+        font-size: 1.2rem;
+    }
+
+    .logout-btn {
+        padding: 6px 12px;
+        font-size: 0.8rem;
     }
 }
+
 
 /* Animation for cards loading */
 .news-card {
