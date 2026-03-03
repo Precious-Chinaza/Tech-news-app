@@ -61,7 +61,25 @@ app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 db = SQLAlchemy(app)
 migrate = Migrate(app, db) # Initialize Flask-Migrate
 
+# --- AUTO-MIGRATION LOGIC ---
+from sqlalchemy import text
+def ensure_columns_exist():
+    with app.app_context():
+        try:
+            # Check for cached_articles.debate_script
+            db.session.execute(text("SELECT debate_script FROM cached_articles LIMIT 1;"))
+        except Exception:
+            db.session.rollback()
+            print("--- Column 'debate_script' missing. Attempting to add it... ---")
+            try:
+                db.session.execute(text("ALTER TABLE cached_articles ADD COLUMN debate_script TEXT;"))
+                db.session.commit()
+                print("--- Column 'debate_script' successfully added. ---")
+            except Exception as e:
+                print(f"--- Failed to add column: {e} ---")
 
+# Run migration check
+ensure_columns_exist()
 
 # --- DATABASE MODELS ---
 
