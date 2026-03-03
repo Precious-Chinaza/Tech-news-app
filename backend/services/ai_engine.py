@@ -18,6 +18,7 @@ class StartupMentor:
         self.voice_maya = "21m00Tcm4TlvDq8ikWAM" # Rachel (Female, Clear)
 
     def get_analysis(self, news_text):
+        import time
         # We MUST pass the news_text into the prompt
         prompt = f"""
         You are 'Discuss', a tech-savvy friend sharing a quick update.
@@ -38,36 +39,50 @@ class StartupMentor:
             "socratic_question": "one_short_engaging_question"
         }}
         """
-        try:
-            response = self.client.models.generate_content(
-                model=self.model_id,
-                contents=prompt,
-                config={'response_mime_type': 'application/json'}
-            )
-            
-            text = response.text.strip()
-            match = re.search(r'\{.*\}', text, re.DOTALL)
-            if match:
-                return json.loads(match.group())
-            return json.loads(text)
-            
-        except Exception as e:
-            error_msg = str(e)
-            print(f"Detailed AI Error: {error_msg}")
-            
-            # Check if it's a Rate Limit error
-            if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+        
+        max_retries = 3
+        retry_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                response = self.client.models.generate_content(
+                    model=self.model_id,
+                    contents=prompt,
+                    config={'response_mime_type': 'application/json'}
+                )
+                
+                text = response.text.strip()
+                match = re.search(r'\{.*\}', text, re.DOTALL)
+                if match:
+                    return json.loads(match.group())
+                return json.loads(text)
+                
+            except Exception as e:
+                error_msg = str(e)
+                print(f"Analysis Attempt {attempt + 1} Error: {error_msg}")
+                
+                # Check if it's a Rate Limit or Service Unavailable error
+                if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg or "503" in error_msg or "UNAVAILABLE" in error_msg:
+                    if attempt < max_retries - 1:
+                        time.sleep(retry_delay * (attempt + 1))
+                        continue
+                    else:
+                        return {
+                            "analysis": "Phew! We're talking so fast I need to catch my breath for about 15 seconds. Give me a moment!",
+                            "socratic_question": "Want to try again in a few seconds?"
+                        }
+                
                 return {
-                    "analysis": "Phew! We're talking so fast I need to catch my breath for about 15 seconds. Give me a moment!",
-                    "socratic_question": "Want to try again in a few seconds?"
+                    "analysis": "I hit a snag reading this. Let's try re-analyzing!",
+                    "socratic_question": "Want me to try again?"
                 }
-            
-            return {
-                "analysis": "I hit a snag reading this. Let's try re-analyzing!",
-                "socratic_question": "Want me to try again?"
-            }
+        return {
+            "analysis": "I hit a snag reading this. Let's try re-analyzing!",
+            "socratic_question": "Want me to try again?"
+        }
 
     def generate_debate_script(self, news_text, username=None):
+        import time
         user_name_text = username if username else "you"
         prompt = f"""
         # ROLE 
@@ -102,28 +117,44 @@ class StartupMentor:
           {{"speaker": "Maya", "text": "..."}}
         ] 
         """
-        try:
-            response = self.client.models.generate_content(
-                model=self.model_id,
-                contents=prompt,
-                config={'response_mime_type': 'application/json'}
-            )
-            
-            text = response.text.strip()
-            # Clean up potential markdown code blocks
-            if text.startswith("```json"):
-                text = text[7:-3]
-            elif text.startswith("```"):
-                text = text[3:-3]
+        
+        max_retries = 3
+        retry_delay = 2 # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                response = self.client.models.generate_content(
+                    model=self.model_id,
+                    contents=prompt,
+                    config={'response_mime_type': 'application/json'}
+                )
                 
-            match = re.search(r'\[.*\]', text, re.DOTALL)
-            if match:
-                return json.loads(match.group())
-            return json.loads(text)
-            
-        except Exception as e:
-            print(f"Debate Script Error: {e}")
-            return []
+                text = response.text.strip()
+                # Clean up potential markdown code blocks
+                if text.startswith("```json"):
+                    text = text[7:-3]
+                elif text.startswith("```"):
+                    text = text[3:-3]
+                    
+                match = re.search(r'\[.*\]', text, re.DOTALL)
+                if match:
+                    return json.loads(match.group())
+                return json.loads(text)
+                
+            except Exception as e:
+                error_msg = str(e)
+                print(f"Debate Script Attempt {attempt + 1} Error: {error_msg}")
+                
+                if "503" in error_msg or "UNAVAILABLE" in error_msg:
+                    if attempt < max_retries - 1:
+                        time.sleep(retry_delay * (attempt + 1))
+                        continue
+                    else:
+                        return [{"speaker": "Alex", "text": "Ugh, my brain is hitting a 503 error. Too many people are trying to talk at once!"}, 
+                                {"speaker": "Maya", "text": "I mean, the AI demand is wild right now. Let's try again in a few seconds."}]
+                
+                return []
+        return []
 
     def generate_audio(self, text, speaker):
         if not self.elevenlabs_api_key:
