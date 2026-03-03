@@ -1,5 +1,5 @@
 print("DEBUG: Top of file")
-from flask import Flask, render_template, flash, request, redirect, url_for, session, jsonify, Response, stream_with_context
+from flask import Flask, render_template, flash, request, redirect, url_for, session, jsonify, Response, stream_with_context, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate # Import Migrate
 from sqlalchemy import inspect # Import inspect
@@ -698,10 +698,26 @@ def get_audio():
     if not text or not speaker:
         return jsonify({"error": "Missing text or speaker"}), 400
         
+    # Generate unique filename for caching
+    import hashlib
+    filename = hashlib.md5(f"{speaker}_{text}".encode()).hexdigest() + ".mp3"
+    filepath = os.path.join(app.static_folder, "audio", filename)
+    
+    # Ensure audio directory exists
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    
+    if os.path.exists(filepath):
+        print(f"--- Serving Audio from File Cache: {filename} ---")
+        return send_from_directory(app.static_folder, "audio/" + filename)
+
     audio_content = mentor.generate_audio(text, speaker)
     
     if not audio_content:
         return jsonify({"error": "Audio generation failed"}), 500
+        
+    # Save to static/audio for future use
+    with open(filepath, "wb") as f:
+        f.write(audio_content)
         
     return Response(audio_content, mimetype="audio/mpeg")
 

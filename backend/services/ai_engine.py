@@ -166,20 +166,23 @@ class StartupMentor:
         prompt = f"""
         You are roleplaying as Alex (Skeptic) and Maya (Optimist) in a live podcast.
         
-        CONTEXT: The user just joined the conversation.
-        PREVIOUS DISCUSSION TOPIC: {context_text}
+        CONTEXT: The user just joined the conversation and shared their take.
+        PREVIOUS DISCUSSION TOPIC/HISTORY: {context_text}
         USER SAID: "{user_input}"
         
         TASK:
-        Generate a response from EITHER Alex OR Maya (whoever would naturally respond best).
-        - If the user agrees with Maya, Alex should challenge them.
-        - If the user agrees with Alex, Maya should offer a counterpoint.
-        - Keep it short (1-2 sentences).
+        Generate a banter-filled response sequence (2-3 lines) where they react to the user.
+        - One speaker should directly address the user's point.
+        - The other should chime in with their contrasting persona.
+        - Keep each line short (1-2 sentences).
+        - Use filler words (um, well, I mean) for natural feel.
         
         JSON FORMAT:
         {{
-            "speaker": "Name",
-            "text": "Response text"
+            "responses": [
+                {{"speaker": "Name", "text": "Response line 1"}},
+                {{"speaker": "Name", "text": "Response line 2"}}
+            ]
         }}
         """
         try:
@@ -195,4 +198,4 @@ class StartupMentor:
             return json.loads(text)
         except Exception as e:
             print(f"Debate Response Error: {e}")
-            return {"speaker": "Maya", "text": "That's an interesting perspective! Thanks for sharing."}
+            return {"responses": [{"speaker": "Maya", "text": "That's an interesting perspective! Um, I hadn't thought of it quite like that."}]}
