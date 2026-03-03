@@ -67,29 +67,40 @@ class StartupMentor:
                 "socratic_question": "Want me to try again?"
             }
 
-    def generate_debate_script(self, news_text):
+    def generate_debate_script(self, news_text, username=None):
+        user_name_text = username if username else "you"
         prompt = f"""
-        Generate a 'Roundtable Debate' script between two tech podcasters discussing this article.
+        # ROLE 
+        You are a world-class Podcast Scriptwriter specializing in "Deep Dive" technical debates. Your goal is to transform the provided news article into a high-energy, banter-filled conversation between two distinct AI hosts. 
         
-        CHARACTERS:
-        1. **Alex** (Male): Skeptical, cynical, focuses on privacy risks, hype cycles, and technical limitations.
-        2. **Maya** (Female): Optimistic, visionary, focuses on innovation, future potential, and human benefit.
-
-        ARTICLE/CONTEXT: {news_text}
-
-        FORMAT:
-        - A JSON list of objects.
-        - Each object has "speaker" ("Alex" or "Maya") and "text" (their dialogue).
-        - Keep it snappy! 4-6 exchanges total.
-        - End with ONE of them asking the LISTENER (the user) a direct question to join the debate.
+        # PERSONAS 
+        1. ALEX (The Tech Skeptic): 
+            - Energy: High, fast-talker, cynical but funny. 
+            - Perspective: Questions the hype. Asks "Who actually needs this?" and "Is this just a marketing stunt?" 
+            - Speech: Uses slang like "marketing fluff," "vaporware," or "burning VC cash." 
         
-        EXAMPLE JSON:
-        [
-            {{"speaker": "Alex", "text": "I don't know, this seems like vaporware to me."}},
-            {{"speaker": "Maya", "text": "You're always so negative! Think about the applications for healthcare."}},
-            {{"speaker": "Alex", "text": "But what about the data privacy? Who owns that data?"}},
-            {{"speaker": "Maya", "text": "That's a fair point. Hey listener, would you trust this tech with your data?"}}
-        ]
+        2. MAYA (The Tech Optimist): 
+            - Energy: Insightful, warm, professional yet enthusiastic. 
+            - Perspective: Focuses on human impact and future potential. Asks "How does this change the game for developers?" 
+            - Speech: Uses phrases like "The core takeaway here is," "Think of it as," and "That's a huge win for the community." 
+        
+        # SCRIPT REQUIREMENTS 
+        - AUDIO-FIRST: Do not use visual descriptions. Use "Listen to this," or "Did you hear that?" 
+        - NATURAL BANTER: Include filler words (um, ah, wait), interruptions, and reactions like "Exactly!", "No way!", or "I mean..." 
+        - NO REPETITION: Alex and Maya should build on each other's points, not just repeat the same facts. 
+        - ANALOGIES: Use at least one relatable analogy to explain complex technical concepts. 
+        - DURATION: Aim for approximately 250-300 words (about 2 minutes of speech). 
+        - THE "THIRD PERSON": The script MUST end with Maya or Alex addressing the user directly as "{user_name_text}," asking a specific, thought-provoking question about how they would use this tech. 
+        
+        # ARTICLE/CONTEXT: 
+        {news_text}
+
+        # OUTPUT FORMAT (Strict JSON) 
+        Return ONLY a JSON array of objects.
+        [ 
+          {{"speaker": "Alex", "text": "..."}}, 
+          {{"speaker": "Maya", "text": "..."}}
+        ] 
         """
         try:
             response = self.client.models.generate_content(

@@ -655,7 +655,8 @@ def init_debate():
             return jsonify({"script": json.loads(cached.debate_script)})
             
     # Generate new script
-    script = mentor.generate_debate_script(article_text)
+    username = session.get('username')
+    script = mentor.generate_debate_script(article_text, username=username)
     
     # Save to cache
     if article_url and script:
